@@ -18,7 +18,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SecureJournalTheme {
+            SecureJournalTheme(themeMode = com.navyanshkesarwani.securejournal.data.SettingsStore.themeMode) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Greeting(
                         name = "Android",
@@ -41,7 +41,7 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 @Preview(showBackground = true)
 @Composable
 fun GreetingPreview() {
-    SecureJournalTheme {
+    SecureJournalTheme(themeMode = com.navyanshkesarwani.securejournal.data.SettingsStore.themeMode) {
         Greeting("Android")
     }
 }

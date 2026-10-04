@@ -1,57 +1,64 @@
 package com.navyanshkesarwani.securejournal.ui.theme
 
-import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
+import androidx.compose.ui.graphics.Color
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+    primary = Plum,
     onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    primaryContainer = PlumContainer,
+    onPrimaryContainer = Color(0xFF21184A),
+    secondary = Sage,
+    secondaryContainer = Color(0xFFD8EADF),
+    tertiary = Apricot,
+    tertiaryContainer = Color(0xFFFFDBCF),
+    background = Paper,
+    onBackground = Ink,
+    surface = Paper,
+    onSurface = Ink,
+    surfaceVariant = PaperVariant,
+    surfaceContainerLow = Color(0xFFF6F2EB),
+    surfaceContainer = PaperVariant,
+    surfaceContainerHigh = Color(0xFFEBE5DC),
 )
+
+private val DarkColorScheme = darkColorScheme(
+    primary = PlumLight,
+    onPrimary = Color(0xFF2C2159),
+    primaryContainer = PlumContainerDark,
+    onPrimaryContainer = PlumContainer,
+    secondary = SageLight,
+    secondaryContainer = Color(0xFF3A5546),
+    tertiary = ApricotLight,
+    tertiaryContainer = Color(0xFF6E3B27),
+    background = Night,
+    onBackground = Color(0xFFE7E3EC),
+    surface = Night,
+    onSurface = Color(0xFFE7E3EC),
+    surfaceVariant = NightVariant,
+    surfaceContainerLow = Color(0xFF1B1A21),
+    surfaceContainer = NightVariant,
+    surfaceContainerHigh = Color(0xFF2B2833),
+)
+
+enum class ThemeMode(val label: String) { SYSTEM("System"), LIGHT("Light"), DARK("Dark") }
 
 @Composable
 fun SecureJournalTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    val darkTheme = when (themeMode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
     }
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
         typography = Typography,
         content = content
     )
