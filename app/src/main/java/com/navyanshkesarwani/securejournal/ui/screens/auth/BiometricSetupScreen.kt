@@ -80,6 +80,7 @@ fun BiometricSetupScreen(onDone: (enabled: Boolean) -> Unit) {
         SimulatedBiometricDialog(
             title = "Enable biometric unlock",
             subtitle = "Confirm your fingerprint",
+            dismissLabel = "Cancel",
             onSuccess = { showPrompt = false; onDone(true) },
             onDismiss = { showPrompt = false }
         )

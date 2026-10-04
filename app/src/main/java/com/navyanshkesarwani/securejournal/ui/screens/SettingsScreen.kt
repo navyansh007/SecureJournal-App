@@ -206,6 +206,7 @@ fun SettingsScreen(onChangePin: () -> Unit, onOpenCloud: () -> Unit) {
         SimulatedBiometricDialog(
             title = "Enable biometric unlock",
             subtitle = "Confirm your fingerprint",
+            dismissLabel = "Cancel",
             onSuccess = { confirmBiometric = false; SettingsStore.biometricEnabled = true },
             onDismiss = { confirmBiometric = false }
         )

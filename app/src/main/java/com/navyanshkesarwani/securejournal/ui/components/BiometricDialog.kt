@@ -6,9 +6,11 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -35,21 +37,24 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
 /**
- * Mimics the system BiometricPrompt. The scan succeeds automatically after a short delay
+ * Mimics the system BiometricPrompt. Tapping the sensor icon simulates a successful scan
  * so the demo flow can be walked through on any device or emulator.
  */
 @Composable
 fun SimulatedBiometricDialog(
     title: String = "Unlock SecureJournal",
     subtitle: String = "Touch the fingerprint sensor",
+    dismissLabel: String = "Use PIN",
     onSuccess: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    var scanning by remember { mutableStateOf(false) }
     var verified by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        delay(1400)
+    LaunchedEffect(scanning) {
+        if (!scanning) return@LaunchedEffect
+        delay(900)
         verified = true
-        delay(600)
+        delay(500)
         onSuccess()
     }
     val pulse by rememberInfiniteTransition(label = "pulse").animateFloat(
@@ -60,16 +65,17 @@ fun SimulatedBiometricDialog(
     )
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title, textAlign = TextAlign.Center) },
+        title = { Text(title, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
         text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Text(subtitle, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(24.dp))
                 Box(
                     Modifier
                         .size(84.dp)
-                        .scale(if (verified) 1f else pulse)
+                        .scale(if (scanning && !verified) pulse else 1f)
                         .clip(CircleShape)
+                        .clickable(enabled = !scanning) { scanning = true }
                         .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
@@ -82,13 +88,17 @@ fun SimulatedBiometricDialog(
                 }
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    if (verified) "Verified" else "Scanning…",
+                    when {
+                        verified -> "Verified"
+                        scanning -> "Scanning…"
+                        else -> "Tap the sensor to simulate a scan"
+                    },
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Use PIN") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(dismissLabel) } }
     )
 }
