@@ -6,15 +6,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.navyanshkesarwani.securejournal.data.Session
+import com.navyanshkesarwani.securejournal.ui.navigation.AppNavHost
 import com.navyanshkesarwani.securejournal.data.SettingsStore
 import com.navyanshkesarwani.securejournal.ui.screens.auth.BiometricSetupScreen
 import com.navyanshkesarwani.securejournal.ui.screens.auth.LockScreen
@@ -65,5 +64,5 @@ private fun SetupFlow() {
 
 @Composable
 private fun MainContent() {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Journal") }
+    AppNavHost()
 }
