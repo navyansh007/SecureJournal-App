@@ -2,9 +2,7 @@ package com.navyanshkesarwani.securejournal.ui.navigation
 
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -13,7 +11,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -25,6 +22,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.navyanshkesarwani.securejournal.data.Session
+import com.navyanshkesarwani.securejournal.data.SettingsStore
+import com.navyanshkesarwani.securejournal.ui.screens.CloudBackupScreen
+import com.navyanshkesarwani.securejournal.ui.screens.SettingsScreen
+import com.navyanshkesarwani.securejournal.ui.screens.auth.PinSetupScreen
 import com.navyanshkesarwani.securejournal.ui.screens.EditorScreen
 import com.navyanshkesarwani.securejournal.ui.screens.EntryDetailScreen
 import com.navyanshkesarwani.securejournal.ui.screens.HomeScreen
@@ -92,14 +93,25 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
             }
             composable(Routes.SEARCH) { SearchScreen(onOpenEntry = { navController.navigate(Routes.entry(it)) }) }
             composable(Routes.ON_THIS_DAY) { OnThisDayScreen(onOpenEntry = { navController.navigate(Routes.entry(it)) }) }
-            composable(Routes.SETTINGS) { Placeholder("Settings") }
+            composable(Routes.SETTINGS) {
+                SettingsScreen(
+                    onChangePin = { navController.navigate(Routes.CHANGE_PIN) },
+                    onOpenCloud = { navController.navigate(Routes.CLOUD) }
+                )
+            }
+            composable(Routes.CLOUD) { CloudBackupScreen(onBack = { navController.popBackStack() }) }
+            composable(Routes.CHANGE_PIN) {
+                PinSetupScreen(
+                    currentPin = SettingsStore.pin,
+                    onPinCreated = {
+                        SettingsStore.pin = it
+                        navController.popBackStack()
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            }
         }
     }
-}
-
-@Composable
-private fun Placeholder(name: String) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(name) }
 }
 
 fun NavHostController.navigateTopLevel(route: String) {
