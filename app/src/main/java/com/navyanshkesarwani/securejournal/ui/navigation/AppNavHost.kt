@@ -18,11 +18,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.navyanshkesarwani.securejournal.data.Session
+import com.navyanshkesarwani.securejournal.ui.screens.EditorScreen
+import com.navyanshkesarwani.securejournal.ui.screens.EntryDetailScreen
 import com.navyanshkesarwani.securejournal.ui.screens.HomeScreen
 
 @Composable
@@ -66,6 +70,23 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                     onOpenOnThisDay = { navController.navigateTopLevel(Routes.ON_THIS_DAY) },
                     onLock = { Session.lock() },
                 )
+            }
+            composable(
+                Routes.ENTRY,
+                arguments = listOf(navArgument("id") { type = NavType.LongType })
+            ) { entry ->
+                EntryDetailScreen(
+                    entryId = entry.arguments!!.getLong("id"),
+                    onBack = { navController.popBackStack() },
+                    onEdit = { navController.navigate(Routes.editor(it)) }
+                )
+            }
+            composable(
+                Routes.EDITOR,
+                arguments = listOf(navArgument("id") { type = NavType.LongType; defaultValue = -1L })
+            ) { entry ->
+                val id = entry.arguments!!.getLong("id").takeIf { it > 0 }
+                EditorScreen(entryId = id, onClose = { navController.popBackStack() })
             }
             composable(Routes.SEARCH) { Placeholder("Search") }
             composable(Routes.ON_THIS_DAY) { Placeholder("On this day") }
