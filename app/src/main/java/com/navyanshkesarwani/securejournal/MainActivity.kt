@@ -4,44 +4,48 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import com.navyanshkesarwani.securejournal.data.AutoLock
+import com.navyanshkesarwani.securejournal.data.Session
+import com.navyanshkesarwani.securejournal.data.SettingsStore
+import com.navyanshkesarwani.securejournal.ui.SecureJournalApp
 import com.navyanshkesarwani.securejournal.ui.theme.SecureJournalTheme
 
 class MainActivity : ComponentActivity() {
+
+    private var backgroundedAt = 0L
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SecureJournalTheme(themeMode = com.navyanshkesarwani.securejournal.data.SettingsStore.themeMode) {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+            SecureJournalTheme(themeMode = SettingsStore.themeMode) {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                    SecureJournalApp()
                 }
             }
         }
     }
-}
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+    override fun onStop() {
+        super.onStop()
+        backgroundedAt = System.currentTimeMillis()
+    }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    SecureJournalTheme(themeMode = com.navyanshkesarwani.securejournal.data.SettingsStore.themeMode) {
-        Greeting("Android")
+    override fun onStart() {
+        super.onStart()
+        if (backgroundedAt == 0L) return
+        val away = System.currentTimeMillis() - backgroundedAt
+        val shouldLock = when (SettingsStore.autoLock) {
+            AutoLock.IMMEDIATELY -> true
+            AutoLock.ONE_MINUTE -> away >= 60_000
+            AutoLock.FIVE_MINUTES -> away >= 5 * 60_000
+            AutoLock.NEVER -> false
+        }
+        if (shouldLock) Session.lock()
     }
 }
