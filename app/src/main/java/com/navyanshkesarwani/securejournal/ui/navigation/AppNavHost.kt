@@ -28,6 +28,7 @@ import com.navyanshkesarwani.securejournal.data.Session
 import com.navyanshkesarwani.securejournal.ui.screens.EditorScreen
 import com.navyanshkesarwani.securejournal.ui.screens.EntryDetailScreen
 import com.navyanshkesarwani.securejournal.ui.screens.HomeScreen
+import com.navyanshkesarwani.securejournal.ui.screens.SearchScreen
 
 @Composable
 fun AppNavHost(navController: NavHostController = rememberNavController()) {
@@ -88,7 +89,7 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 val id = entry.arguments!!.getLong("id").takeIf { it > 0 }
                 EditorScreen(entryId = id, onClose = { navController.popBackStack() })
             }
-            composable(Routes.SEARCH) { Placeholder("Search") }
+            composable(Routes.SEARCH) { SearchScreen(onOpenEntry = { navController.navigate(Routes.entry(it)) }) }
             composable(Routes.ON_THIS_DAY) { Placeholder("On this day") }
             composable(Routes.SETTINGS) { Placeholder("Settings") }
         }
