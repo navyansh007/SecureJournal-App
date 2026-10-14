@@ -123,7 +123,13 @@ fun EntryCard(entry: JournalEntry, onClick: () -> Unit, modifier: Modifier = Mod
 }
 
 @Composable
-fun EmptyState(icon: ImageVector, title: String, message: String, modifier: Modifier = Modifier) {
+fun EmptyState(
+    icon: ImageVector,
+    title: String,
+    message: String,
+    modifier: Modifier = Modifier,
+    action: (@Composable () -> Unit)? = null,
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -149,6 +155,10 @@ fun EmptyState(icon: ImageVector, title: String, message: String, modifier: Modi
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
+        if (action != null) {
+            Spacer(Modifier.height(16.dp))
+            action()
+        }
     }
 }
 

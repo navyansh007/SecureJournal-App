@@ -1,41 +1,113 @@
 package com.navyanshkesarwani.securejournal.data
 
-import androidx.compose.runtime.mutableStateListOf
+import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
- * In-memory stand-in for the encrypted Room database.
- * Backed by snapshot state so the UI recomposes on every change.
+ * Single place the UI talks to for journal entries.
+ * Entries live in the Room database; [entries] is a live copy that updates whenever the table changes,
+ * so every screen that reads it recomposes automatically.
  */
 object JournalRepository {
 
-    private val _entries = mutableStateListOf<JournalEntry>().apply { addAll(SampleData.entries()) }
-    private var nextId = (_entries.maxOfOrNull { it.id } ?: 0L) + 1
+    private lateinit var dao: JournalDao
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    val entries: List<JournalEntry>
-        get() = _entries.sortedByDescending { it.createdAt }
+    /** All entries, newest first. */
+    var entries by mutableStateOf<List<JournalEntry>>(emptyList())
+        private set
 
-    fun get(id: Long): JournalEntry? = _entries.firstOrNull { it.id == id }
+    /** False until the database has been read once after app start. */
+    var isLoaded by mutableStateOf(false)
+        private set
+
+    /** Called once from [com.navyanshkesarwani.securejournal.SecureJournalApplication]. */
+    fun init(context: Context) {
+        dao = JournalDatabase.create(context).journalDao()
+        scope.launch {
+            dao.observeAll().collect {
+                entries = it
+                isLoaded = true
+            }
+        }
+    }
+
+    fun get(id: Long): JournalEntry? = entries.firstOrNull { it.id == id }
 
     /** Inserts when [entry] has id 0, otherwise updates. Returns the stored entry. */
-    fun save(entry: JournalEntry): JournalEntry {
-        val now = LocalDateTime.now()
-        return if (entry.id == 0L) {
-            entry.copy(id = nextId++, updatedAt = now).also { _entries.add(it) }
+    suspend fun save(entry: JournalEntry): JournalEntry {
+        val stamped = entry.copy(updatedAt = LocalDateTime.now())
+        return if (stamped.id == 0L) {
+            stamped.copy(id = dao.insert(stamped))
         } else {
-            val updated = entry.copy(updatedAt = now)
-            val index = _entries.indexOfFirst { it.id == entry.id }
-            if (index >= 0) _entries[index] = updated else _entries.add(updated)
-            updated
+            dao.update(stamped)
+            stamped
         }
     }
 
     fun delete(id: Long) {
-        _entries.removeAll { it.id == id }
+        scope.launch { dao.delete(id) }
     }
 
-    fun deleteAll() = _entries.clear()
+    fun deleteAll() {
+        scope.launch { dao.deleteAll() }
+    }
+
+    /** Adds entries that aren't already in the journal (same title and time). Returns how many were added. */
+    suspend fun addAll(newEntries: List<JournalEntry>): Int {
+        val existing = entries.map { it.title to it.createdAt }.toSet()
+        val toAdd = newEntries
+            .filter { (it.title to it.createdAt) !in existing }
+            .map { it.copy(id = 0) }
+        dao.insertAll(toAdd)
+        return toAdd.size
+    }
+
+    // ---------- Backup file (JSON) ----------
+
+    fun toJson(): String {
+        val array = JSONArray()
+        entries.forEach { entry ->
+            array.put(
+                JSONObject()
+                    .put("title", entry.title)
+                    .put("content", entry.content)
+                    .put("mood", entry.mood.name)
+                    .put("createdAt", entry.createdAt.toString())
+                    .put("updatedAt", entry.updatedAt.toString())
+            )
+        }
+        return JSONObject().put("app", "SecureJournal").put("entries", array).toString(2)
+    }
+
+    /** Throws if [json] is not a SecureJournal backup. */
+    fun fromJson(json: String): List<JournalEntry> {
+        val root = JSONObject(json)
+        require(root.optString("app") == "SecureJournal") { "Not a SecureJournal backup" }
+        val array = root.getJSONArray("entries")
+        return (0 until array.length()).map { i ->
+            val item = array.getJSONObject(i)
+            JournalEntry(
+                title = item.getString("title"),
+                content = item.getString("content"),
+                mood = Mood.valueOf(item.getString("mood")),
+                createdAt = LocalDateTime.parse(item.getString("createdAt")),
+                updatedAt = LocalDateTime.parse(item.getString("updatedAt")),
+            )
+        }
+    }
+
+    // ---------- Queries used by the screens ----------
 
     fun search(
         query: String,
@@ -79,7 +151,7 @@ object JournalRepository {
 
     /** Consecutive days (ending today or yesterday) with at least one entry. */
     fun currentStreak(today: LocalDate = LocalDate.now()): Int {
-        val days = _entries.map { it.createdAt.toLocalDate() }.toSet()
+        val days = entries.map { it.createdAt.toLocalDate() }.toSet()
         var day = if (today in days) today else today.minusDays(1)
         var streak = 0
         while (day in days) {

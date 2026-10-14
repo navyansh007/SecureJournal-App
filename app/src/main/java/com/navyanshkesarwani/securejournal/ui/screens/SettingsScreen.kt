@@ -1,6 +1,9 @@
 package com.navyanshkesarwani.securejournal.ui.screens
 
+import android.Manifest
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +18,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.CloudUpload
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Info
@@ -27,6 +31,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Password
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -59,10 +64,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.navyanshkesarwani.securejournal.data.AutoLock
 import com.navyanshkesarwani.securejournal.data.JournalRepository
+import com.navyanshkesarwani.securejournal.data.SampleData
 import com.navyanshkesarwani.securejournal.data.Session
 import com.navyanshkesarwani.securejournal.data.SettingsStore
 import com.navyanshkesarwani.securejournal.ui.components.SectionHeader
-import com.navyanshkesarwani.securejournal.ui.components.SimulatedBiometricDialog
+import com.navyanshkesarwani.securejournal.reminder.Reminder
+import com.navyanshkesarwani.securejournal.ui.components.canUseBiometrics
+import com.navyanshkesarwani.securejournal.ui.components.showBiometricPrompt
 import com.navyanshkesarwani.securejournal.ui.components.TimePickerDialog
 import com.navyanshkesarwani.securejournal.ui.formatDateTime
 import com.navyanshkesarwani.securejournal.ui.formatTime
@@ -72,14 +80,47 @@ import java.time.LocalTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onChangePin: () -> Unit, onOpenCloud: () -> Unit) {
+fun SettingsScreen(onChangePin: () -> Unit, onOpenBackup: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     var showTimePicker by remember { mutableStateOf(false) }
     var showAutoLockMenu by remember { mutableStateOf(false) }
-    var confirmBiometric by remember { mutableStateOf(false) }
     var confirmWipe by remember { mutableStateOf(false) }
+
+    fun showMessage(text: String) {
+        scope.launch { snackbar.showSnackbar(text) }
+    }
+
+    fun enableBiometrics() {
+        if (!canUseBiometrics(context)) {
+            showMessage("No fingerprint or face is set up on this phone")
+            return
+        }
+        showBiometricPrompt(
+            context,
+            title = "Enable biometric unlock",
+            subtitle = "Confirm your fingerprint",
+            negativeText = "Cancel",
+            onSuccess = { SettingsStore.biometricEnabled = true }
+        )
+    }
+
+    fun setReminder(enabled: Boolean) {
+        SettingsStore.reminderEnabled = enabled
+        Reminder.update(context)
+        if (enabled) showMessage("Reminder set for ${SettingsStore.reminderTime.formatTime()} every day")
+    }
+
+    // Android 13+ asks the user before an app may post notifications.
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) setReminder(true) else showMessage("Allow notifications to get the daily reminder")
+    }
+
+    fun turnOnReminder() {
+        if (Reminder.hasPermission(context)) setReminder(true)
+        else notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Settings") }) },
@@ -95,13 +136,11 @@ fun SettingsScreen(onChangePin: () -> Unit, onOpenCloud: () -> Unit) {
             SettingsRow(Icons.Outlined.Password, "Change PIN", "Update your 4-digit unlock PIN", onClick = onChangePin)
             SettingsRow(
                 Icons.Outlined.Fingerprint, "Biometric unlock", "Use fingerprint or face to unlock",
-                onClick = {
-                    if (SettingsStore.biometricEnabled) SettingsStore.biometricEnabled = false else confirmBiometric = true
-                }
+                onClick = { if (SettingsStore.biometricEnabled) SettingsStore.biometricEnabled = false else enableBiometrics() }
             ) {
                 Switch(
                     checked = SettingsStore.biometricEnabled,
-                    onCheckedChange = { if (it) confirmBiometric = true else SettingsStore.biometricEnabled = false }
+                    onCheckedChange = { if (it) enableBiometrics() else SettingsStore.biometricEnabled = false }
                 )
             }
             Box {
@@ -123,13 +162,22 @@ fun SettingsScreen(onChangePin: () -> Unit, onOpenCloud: () -> Unit) {
                 }
             }
             SettingsRow(Icons.Outlined.Lock, "Lock now", "Return to the lock screen", onClick = { Session.lock() })
+            SettingsRow(
+                Icons.Outlined.VisibilityOff, "Hide in recent apps", "Blank the app preview and block screenshots",
+                onClick = { SettingsStore.hideInRecents = !SettingsStore.hideInRecents }
+            ) {
+                Switch(checked = SettingsStore.hideInRecents, onCheckedChange = { SettingsStore.hideInRecents = it })
+            }
 
             SectionHeader("Reminders", Modifier.padding(top = 16.dp))
             SettingsRow(
                 Icons.Outlined.Notifications, "Daily reminder", "A gentle nudge to write every day",
-                onClick = { SettingsStore.reminderEnabled = !SettingsStore.reminderEnabled }
+                onClick = { if (SettingsStore.reminderEnabled) setReminder(false) else turnOnReminder() }
             ) {
-                Switch(checked = SettingsStore.reminderEnabled, onCheckedChange = { SettingsStore.reminderEnabled = it })
+                Switch(
+                    checked = SettingsStore.reminderEnabled,
+                    onCheckedChange = { if (it) turnOnReminder() else setReminder(false) }
+                )
             }
             SettingsRow(
                 Icons.Outlined.Schedule, "Reminder time", SettingsStore.reminderTime.formatTime(),
@@ -137,9 +185,9 @@ fun SettingsScreen(onChangePin: () -> Unit, onOpenCloud: () -> Unit) {
                 onClick = { showTimePicker = true }
             )
             SettingsRow(
-                Icons.Outlined.NotificationsActive, "Preview reminder", "See what the notification looks like",
+                Icons.Outlined.NotificationsActive, "Send test reminder", "Show the reminder notification now",
                 enabled = SettingsStore.reminderEnabled,
-                onClick = { scope.launch { snackbar.showSnackbar("📓 Time to journal — how was your day?") } }
+                onClick = { Reminder.showNotification(context) }
             )
 
             SectionHeader("Appearance", Modifier.padding(top = 16.dp))
@@ -159,11 +207,9 @@ fun SettingsScreen(onChangePin: () -> Unit, onOpenCloud: () -> Unit) {
 
             SectionHeader("Backup & data", Modifier.padding(top = 16.dp))
             SettingsRow(
-                Icons.Outlined.CloudUpload, "Cloud backup & sync",
-                SettingsStore.cloudEmail?.let { email ->
-                    "Signed in as $email" + (SettingsStore.lastBackup?.let { " · Last backup ${it.formatDateTime()}" } ?: "")
-                } ?: "Off · Sign in to back up across devices",
-                onClick = onOpenCloud
+                Icons.Outlined.Backup, "Backup & restore",
+                SettingsStore.lastBackup?.let { "Last backup ${it.formatDateTime()}" } ?: "Save your journal to a file or Google Drive",
+                onClick = onOpenBackup
             ) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) }
             SettingsRow(
                 Icons.Outlined.IosShare, "Export entries", "Share all entries as plain text",
@@ -174,7 +220,17 @@ fun SettingsScreen(onChangePin: () -> Unit, onOpenCloud: () -> Unit) {
                         putExtra(Intent.EXTRA_SUBJECT, "SecureJournal export")
                         putExtra(Intent.EXTRA_TEXT, text)
                     }
+                    Session.leavingForSystemScreen = true
                     context.startActivity(Intent.createChooser(send, "Export journal"))
+                }
+            )
+            SettingsRow(
+                Icons.Outlined.AutoAwesome, "Load sample entries", "Add ${SampleData.entries().size} example entries to explore the app",
+                onClick = {
+                    scope.launch {
+                        val added = JournalRepository.addAll(SampleData.entries())
+                        snackbar.showSnackbar(if (added == 0) "Sample entries are already in your journal" else "Added $added sample entries")
+                    }
                 }
             )
             SettingsRow(
@@ -184,7 +240,8 @@ fun SettingsScreen(onChangePin: () -> Unit, onOpenCloud: () -> Unit) {
             )
 
             SectionHeader("About", Modifier.padding(top = 16.dp))
-            SettingsRow(Icons.Outlined.Info, "SecureJournal", "Version 1.0 · UI preview build", onClick = {})
+            val version = remember { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
+            SettingsRow(Icons.Outlined.Info, "SecureJournal", "Version $version", onClick = {})
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -197,19 +254,9 @@ fun SettingsScreen(onChangePin: () -> Unit, onOpenCloud: () -> Unit) {
             onConfirm = {
                 SettingsStore.reminderTime = LocalTime.of(state.hour, state.minute)
                 showTimePicker = false
-                scope.launch { snackbar.showSnackbar("Reminder set for ${SettingsStore.reminderTime.formatTime()} every day") }
+                setReminder(true)
             }
         ) { TimePicker(state) }
-    }
-
-    if (confirmBiometric) {
-        SimulatedBiometricDialog(
-            title = "Enable biometric unlock",
-            subtitle = "Confirm your fingerprint",
-            dismissLabel = "Cancel",
-            onSuccess = { confirmBiometric = false; SettingsStore.biometricEnabled = true },
-            onDismiss = { confirmBiometric = false }
-        )
     }
 
     if (confirmWipe) {
@@ -217,7 +264,7 @@ fun SettingsScreen(onChangePin: () -> Unit, onOpenCloud: () -> Unit) {
             onDismissRequest = { confirmWipe = false },
             icon = { Icon(Icons.Outlined.DeleteForever, null) },
             title = { Text("Delete all entries?") },
-            text = { Text("All ${JournalRepository.entries.size} entries will be erased from this device. Cloud backups are not affected.") },
+            text = { Text("All ${JournalRepository.entries.size} entries will be erased from this device. Backup files you saved are not affected.") },
             confirmButton = {
                 TextButton(onClick = {
                     JournalRepository.deleteAll()

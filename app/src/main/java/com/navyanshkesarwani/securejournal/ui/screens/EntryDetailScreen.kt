@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.navyanshkesarwani.securejournal.data.JournalEntry
 import com.navyanshkesarwani.securejournal.data.JournalRepository
+import com.navyanshkesarwani.securejournal.data.Session
 import com.navyanshkesarwani.securejournal.ui.components.MoodBadge
 import com.navyanshkesarwani.securejournal.ui.formatDateTime
 import com.navyanshkesarwani.securejournal.ui.formatLongDay
@@ -64,6 +65,7 @@ fun EntryDetailScreen(entryId: Long, onBack: () -> Unit, onEdit: (Long) -> Unit)
                             putExtra(Intent.EXTRA_SUBJECT, entry.title)
                             putExtra(Intent.EXTRA_TEXT, entry.asShareText())
                         }
+                        Session.leavingForSystemScreen = true
                         context.startActivity(Intent.createChooser(send, "Share entry"))
                     }) { Icon(Icons.Outlined.Share, "Share") }
                     IconButton(onClick = { onEdit(entry.id) }) { Icon(Icons.Outlined.Edit, "Edit") }

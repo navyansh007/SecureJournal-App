@@ -1,6 +1,8 @@
 package com.navyanshkesarwani.securejournal.data
 
 import androidx.compose.ui.graphics.Color
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import java.time.LocalDateTime
 
 enum class Mood(val emoji: String, val label: String, val color: Color) {
@@ -15,8 +17,10 @@ enum class Mood(val emoji: String, val label: String, val color: Color) {
     ANGRY("😠", "Angry", Color(0xFFD9645A)),
 }
 
+/** One diary entry = one row in the "entries" table. An id of 0 means "not saved yet". */
+@Entity(tableName = "entries")
 data class JournalEntry(
-    val id: Long,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
     val content: String,
     val mood: Mood,

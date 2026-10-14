@@ -12,6 +12,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import com.navyanshkesarwani.securejournal.data.JournalRepository
 import com.navyanshkesarwani.securejournal.data.Session
 import com.navyanshkesarwani.securejournal.ui.navigation.AppNavHost
 import com.navyanshkesarwani.securejournal.data.SettingsStore
@@ -25,19 +27,17 @@ private enum class SetupStep { WELCOME, PIN, BIOMETRIC }
 /** Root: first-run setup, then the lock gate, then the journal itself. */
 @Composable
 fun SecureJournalApp() {
-    val pin = SettingsStore.pin
     when {
-        pin == null -> SetupFlow()
+        SettingsStore.pin == null -> SetupFlow()
         else -> Box(Modifier.fillMaxSize()) {
-            MainContent()
-            // The lock screen sits on top so navigation state survives a re-lock.
-            if (!Session.unlocked) {
-                LockScreen(
-                    correctPin = pin,
-                    biometricEnabled = SettingsStore.biometricEnabled,
-                    onUnlocked = { Session.unlocked = true }
-                )
+            val locked = !Session.unlocked
+            // While locked, hide the journal from accessibility services (screen readers) as well.
+            Box(if (locked) Modifier.clearAndSetSemantics {} else Modifier) {
+                // Wait for the first read from the database so screens never show a half-loaded journal.
+                if (JournalRepository.isLoaded) MainContent()
             }
+            // The lock screen sits on top so navigation state survives a re-lock.
+            if (locked) LockScreen()
         }
     }
 }
@@ -55,8 +55,8 @@ private fun SetupFlow() {
             )
             SetupStep.BIOMETRIC -> BiometricSetupScreen(onDone = { enabled ->
                 SettingsStore.biometricEnabled = enabled
-                Session.unlocked = true
                 SettingsStore.pin = newPin
+                Session.unlocked = true
             })
         }
     }

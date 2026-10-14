@@ -23,7 +23,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.navyanshkesarwani.securejournal.data.Session
 import com.navyanshkesarwani.securejournal.data.SettingsStore
-import com.navyanshkesarwani.securejournal.ui.screens.CloudBackupScreen
+import com.navyanshkesarwani.securejournal.ui.screens.BackupScreen
 import com.navyanshkesarwani.securejournal.ui.screens.SettingsScreen
 import com.navyanshkesarwani.securejournal.ui.screens.auth.PinSetupScreen
 import com.navyanshkesarwani.securejournal.ui.screens.EditorScreen
@@ -96,10 +96,10 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
             composable(Routes.SETTINGS) {
                 SettingsScreen(
                     onChangePin = { navController.navigate(Routes.CHANGE_PIN) },
-                    onOpenCloud = { navController.navigate(Routes.CLOUD) }
+                    onOpenBackup = { navController.navigate(Routes.BACKUP) }
                 )
             }
-            composable(Routes.CLOUD) { CloudBackupScreen(onBack = { navController.popBackStack() }) }
+            composable(Routes.BACKUP) { BackupScreen(onBack = { navController.popBackStack() }) }
             composable(Routes.CHANGE_PIN) {
                 PinSetupScreen(
                     currentPin = SettingsStore.pin,

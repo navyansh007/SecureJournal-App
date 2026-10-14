@@ -46,7 +46,7 @@ private val pages = listOf(
     OnboardingPage(
         Icons.Outlined.Lock,
         "Private by design",
-        "Your journal is locked with a PIN or fingerprint and every entry is encrypted on your device."
+        "Your journal is locked with a PIN or fingerprint and your entries never leave this phone unless you back them up."
     ),
     OnboardingPage(
         Icons.Outlined.EmojiEmotions,

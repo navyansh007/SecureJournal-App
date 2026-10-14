@@ -29,11 +29,13 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -42,11 +44,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.navyanshkesarwani.securejournal.data.JournalRepository
+import com.navyanshkesarwani.securejournal.data.SampleData
 import com.navyanshkesarwani.securejournal.ui.components.EmptyState
 import com.navyanshkesarwani.securejournal.ui.components.EntryCard
 import com.navyanshkesarwani.securejournal.ui.components.SectionHeader
 import com.navyanshkesarwani.securejournal.ui.formatLongDay
 import com.navyanshkesarwani.securejournal.ui.formatMonth
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -62,6 +66,7 @@ fun HomeScreen(
     val memories = JournalRepository.onThisDay()
     val today = LocalDate.now()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -95,8 +100,14 @@ fun HomeScreen(
             EmptyState(
                 Icons.Outlined.EditNote,
                 "Your journal is empty",
-                "Tap Write to capture your first thought. Everything stays encrypted on this device.",
-                Modifier.padding(padding)
+                "Tap Write to capture your first thought. Entries are saved privately on this device.",
+                Modifier.padding(padding),
+                action = {
+                    // Optional demo content, saved to the database like any other entry.
+                    OutlinedButton(onClick = { scope.launch { JournalRepository.addAll(SampleData.entries()) } }) {
+                        Text("Load sample entries")
+                    }
+                }
             )
             return@Scaffold
         }

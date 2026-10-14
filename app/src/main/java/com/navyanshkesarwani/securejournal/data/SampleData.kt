@@ -3,13 +3,16 @@ package com.navyanshkesarwani.securejournal.data
 import java.time.LocalDate
 import java.time.LocalTime
 
-/** Dummy entries placed relative to today so every screen has something to show. */
+/**
+ * Example entries the user can add on purpose (Settings → "Load sample entries", or the empty Journal screen).
+ * Dates are relative to today so the streak and "On this day" screens have something to show.
+ * Once added they are normal entries in the database and can be edited or deleted.
+ */
 object SampleData {
 
     fun entries(today: LocalDate = LocalDate.now()): List<JournalEntry> {
-        var id = 1L
         fun entry(date: LocalDate, time: String, mood: Mood, title: String, content: String) =
-            JournalEntry(id++, title, content, mood, date.atTime(LocalTime.parse(time)))
+            JournalEntry(title = title, content = content, mood = mood, createdAt = date.atTime(LocalTime.parse(time)))
 
         return listOf(
             entry(

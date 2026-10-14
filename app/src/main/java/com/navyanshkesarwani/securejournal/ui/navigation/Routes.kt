@@ -18,7 +18,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val ENTRY = "entry/{id}"
     const val EDITOR = "editor?id={id}"
-    const val CLOUD = "cloud"
+    const val BACKUP = "backup"
     const val CHANGE_PIN = "change_pin"
 
     fun entry(id: Long) = "entry/$id"

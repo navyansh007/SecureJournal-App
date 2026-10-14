@@ -18,7 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.CalendarToday
-import androidx.compose.material.icons.outlined.CloudDone
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AssistChip
@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +60,9 @@ import com.navyanshkesarwani.securejournal.ui.components.TimePickerDialog
 import com.navyanshkesarwani.securejournal.ui.formatDay
 import com.navyanshkesarwani.securejournal.ui.formatTime
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -81,28 +85,39 @@ fun EditorScreen(entryId: Long?, onClose: () -> Unit) {
     var showTimePicker by remember { mutableStateOf(false) }
 
     val isEmpty = title.isBlank() && content.isBlank()
+    var hasChanges by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    // Autosave and the Done button can both save; the lock makes sure a new entry is only inserted once.
+    val saveLock = remember { Mutex() }
 
-    fun save() {
-        if (isEmpty) return
+    suspend fun save() = saveLock.withLock {
+        if (isEmpty || !hasChanges) return@withLock
+        hasChanges = false
         val stored = JournalRepository.save(JournalEntry(id, title.trim(), content.trim(), mood, createdAt))
         id = stored.id
         lastSaved = stored.updatedAt
         saveState = SaveState.SAVED
     }
 
-    // Autosave: persist shortly after the user stops typing.
+    // Autosave: write to the database 0.8 s after the user stops typing.
     var firstRun by remember { mutableStateOf(true) }
     LaunchedEffect(title, content, mood, createdAt) {
         if (firstRun) { firstRun = false; return@LaunchedEffect }
+        hasChanges = true
         if (isEmpty) return@LaunchedEffect
         saveState = SaveState.SAVING
         delay(800)
         save()
     }
 
+    var closing by remember { mutableStateOf(false) }
     fun close() {
-        save()
-        onClose()
+        if (closing) return // ignore a double tap on Back/Done
+        closing = true
+        scope.launch {
+            save()
+            onClose()
+        }
     }
     BackHandler { close() }
 
@@ -194,7 +209,7 @@ fun EditorScreen(entryId: Long?, onClose: () -> Unit) {
                 Icon(Icons.Outlined.Lock, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "End-to-end encrypted",
+                    "Saved privately on this device",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
@@ -250,7 +265,7 @@ private fun SaveIndicator(state: SaveState, lastSaved: LocalDateTime?) {
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (state == SaveState.SAVED) {
-            Icon(Icons.Outlined.CloudDone, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
+            Icon(Icons.Outlined.CheckCircle, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
             Spacer(Modifier.width(4.dp))
         }
         Text(

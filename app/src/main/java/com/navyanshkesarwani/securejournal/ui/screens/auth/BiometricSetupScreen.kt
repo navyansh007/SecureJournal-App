@@ -20,20 +20,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.navyanshkesarwani.securejournal.ui.components.SimulatedBiometricDialog
+import com.navyanshkesarwani.securejournal.ui.components.canUseBiometrics
+import com.navyanshkesarwani.securejournal.ui.components.showBiometricPrompt
 
 @Composable
 fun BiometricSetupScreen(onDone: (enabled: Boolean) -> Unit) {
-    var showPrompt by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val available = canUseBiometrics(context)
 
     Column(
         Modifier
@@ -61,28 +60,28 @@ fun BiometricSetupScreen(onDone: (enabled: Boolean) -> Unit) {
             Text("Unlock with fingerprint?", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
             Spacer(Modifier.height(12.dp))
             Text(
-                "Use your fingerprint or face to open your journal quickly. Your PIN will always work as a backup.",
+                if (available) "Use your fingerprint or face to open your journal quickly. Your PIN will always work as a backup."
+                else "No fingerprint or face is set up on this phone. Add one in the phone's Settings, then turn this on from SecureJournal's Settings.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
         }
         Button(
-            onClick = { showPrompt = true },
+            onClick = {
+                showBiometricPrompt(
+                    context,
+                    title = "Enable biometric unlock",
+                    subtitle = "Confirm your fingerprint",
+                    negativeText = "Cancel",
+                    onSuccess = { onDone(true) }
+                )
+            },
+            enabled = available,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
         ) { Text("Enable biometrics") }
         TextButton(onClick = { onDone(false) }, modifier = Modifier.padding(top = 8.dp)) { Text("Not now") }
-    }
-
-    if (showPrompt) {
-        SimulatedBiometricDialog(
-            title = "Enable biometric unlock",
-            subtitle = "Confirm your fingerprint",
-            dismissLabel = "Cancel",
-            onSuccess = { showPrompt = false; onDone(true) },
-            onDismiss = { showPrompt = false }
-        )
     }
 }
